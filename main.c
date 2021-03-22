@@ -166,37 +166,37 @@ uint8_t transfer_8b_SPI1_Slave(uint8_t outByte) {
 /**************************************************************************************/
 void RCC_Configuration(void) {
 
-//	    RCC_USARTCLKConfig(RCC_USART1CLK_PCLK);
-
+#if 0 // UART1
 //    RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1 /* | RCC_APB2Periph_AFIO | RCC_APB2Periph_GPIOA */, ENABLE);
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);
-    //	 /* GPIOA clock enable */
+    /* GPIOA clock enable */
     RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOA, ENABLE);
 
-    //     RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
+#else
 
-    /*
-     * https://github.com/travisg/stm32/blob/master/main.c
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2 ,ENABLE); // RCC_AHBPeriph_GPIOA
 
-     RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
+    RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOA,ENABLE); // enables clock to portA (https://www.mikrocontroller.net/attachment/183014/main.c)
 
-     GPIO_PinRemapConfig(GPIO_Remap_USART1, DISABLE);
-     */
+#endif
 }
 
 /**************************************************************************************/
 void GPIO_Configuration(void) {
     GPIO_InitTypeDef GPIO_InitStructure;
     /*-------------------------- GPIO Configuration ----------------------------*/
-    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9 | GPIO_Pin_10;
+//    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9 | GPIO_Pin_10; // USART1
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2 | GPIO_Pin_3; // USART2
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
     GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
     GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_Init(GPIOA, &GPIO_InitStructure);
     /* Connect USART pins to AF */
-    GPIO_PinAFConfig(GPIOA, GPIO_PinSource9, GPIO_AF_7); // USART1_TX
-    GPIO_PinAFConfig(GPIOA, GPIO_PinSource10, GPIO_AF_7); // USART1_RX
+//    GPIO_PinAFConfig(GPIOA, GPIO_PinSource9, GPIO_AF_7); // USART1_TX
+//    GPIO_PinAFConfig(GPIOA, GPIO_PinSource10, GPIO_AF_7); // USART1_RX
+    GPIO_PinAFConfig(GPIOA, GPIO_PinSource2, GPIO_AF_7); // USART2_TX
+    GPIO_PinAFConfig(GPIOA, GPIO_PinSource3, GPIO_AF_7); // USART2_RX
 }
 
 /**************************************************************************************/
@@ -218,21 +218,32 @@ void USARTx_Configuration(void) {
     USART_InitStructure.USART_HardwareFlowControl =
     USART_HardwareFlowControl_None;
     USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
-    USART_Init(USART1, &USART_InitStructure);
-    USART_Cmd(USART1, ENABLE);
+// enable USART 1
+//    USART_Init(USART1, &USART_InitStructure);
+//    USART_Cmd(USART1, ENABLE);
+// enable USART 2
+    USART_Init(USART2, &USART_InitStructure);
+    USART_Cmd(USART2, ENABLE);
 }
 
 /**************************************************************************************/
 char USART_GetChar(void) {
-    while (USART_GetFlagStatus(USART1, USART_FLAG_RXNE) == RESET)
+//    while (USART_GetFlagStatus(USART1, USART_FLAG_RXNE) == RESET)
+//        ; // Wait for Full
+//    return ((char) USART_ReceiveData(USART1));
+
+    while (USART_GetFlagStatus(USART2, USART_FLAG_RXNE) == RESET)
         ; // Wait for Full
-    return ((char) USART_ReceiveData(USART1));
+    return ((char) USART_ReceiveData(USART2));
 }
 /**************************************************************************************/
 void USART_PutChar(char i) {
-    while (USART_GetFlagStatus(USART1, USART_FLAG_TXE) == RESET)
+//    while (USART_GetFlagStatus(USART1, USART_FLAG_TXE) == RESET)
+//        ; // Wait for Empty
+//    USART_SendData(USART1, i);
+    while (USART_GetFlagStatus(USART2, USART_FLAG_TXE) == RESET)
         ; // Wait for Empty
-    USART_SendData(USART1, i);
+    USART_SendData(USART2, i);
 }
 /**************************************************************************************/
 void USART_PutString(char *s) {
@@ -341,7 +352,7 @@ int main(void) {
         //      uart_out[0] = n;
 #endif
 
-//	  USART1->TDR = 0x30;
+//  USART1->TDR = 0x30;
         USART_PutString(uart_out);
 
         delay_ms(100);
