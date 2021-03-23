@@ -28,7 +28,8 @@
 /* Includes ------------------------------------------------------------------*/
 #include <stdio.h>
 #include "main.h"
-#include "stm32f30x_spi.h"
+#include "spi.h"
+#include "usart.h"
 
 /** @addtogroup STM32F30x_StdPeriph_Templates
  * @{
@@ -61,217 +62,6 @@ void _SysTick_Handler(void) {
 }
 
 
-// setup SPI1 pins A4/SS, A5/SCK, A6/MISO, A7/MOSI on port A
-// see also  https://hackaday.io/project/28496-the-ultimate-vlogging-mic/log/71799-spi-between-the-raspberry-pi-stm32
-//    https://community.st.com/s/question/0D50X00009Xkgnm/stm32f0-spi
-//
-void PeripheralInit_SPIx_Slave() {
-
-    GPIO_InitTypeDef GPIO_InitDef;
-    SPI_InitTypeDef SPI_InitDef;
-
-    // initialize init structs
-    GPIO_StructInit(&GPIO_InitDef);
-    SPI_StructInit(&SPI_InitDef);
-
-    // initialize clocks
-    RCC_APB2PeriphClockCmd( RCC_APB2Periph_SPI1, ENABLE);
-    // Enables the peripheral clock
-    RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOA, ENABLE);
-
-    // SS
-    GPIO_PinAFConfig(GPIOA, GPIO_PinSource4, GPIO_AF_5);
-    // SCK
-    GPIO_PinAFConfig(GPIOA, GPIO_PinSource5, GPIO_AF_5);
-    // MISO
-    GPIO_PinAFConfig(GPIOA, GPIO_PinSource6, GPIO_AF_5);
-    // MOSI
-    GPIO_PinAFConfig(GPIOA, GPIO_PinSource7, GPIO_AF_5);
-
-    // initialize A4/SS alternate function open-drain (50 MHz)
-    GPIO_InitDef.GPIO_Pin = GPIO_Pin_4;
-    GPIO_InitDef.GPIO_Mode = GPIO_Mode_AF;
-    GPIO_InitDef.GPIO_OType = GPIO_OType_PP;
-    GPIO_InitDef.GPIO_PuPd = GPIO_PuPd_NOPULL;
-    GPIO_InitDef.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_Init(GPIOA, &GPIO_InitDef);
-
-    // initialize A5/SCK alternate function open-drain (50 MHz)
-    GPIO_InitDef.GPIO_Pin = GPIO_Pin_5;
-    GPIO_InitDef.GPIO_Mode = GPIO_Mode_AF;
-    GPIO_InitDef.GPIO_OType = GPIO_OType_PP;
-    GPIO_InitDef.GPIO_PuPd = GPIO_PuPd_NOPULL;
-    GPIO_InitDef.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_Init(GPIOA, &GPIO_InitDef);
-
-    // initialize A6/MISO alternate function push-pull (50 MHz)
-    GPIO_InitDef.GPIO_Pin = GPIO_Pin_6;
-    GPIO_InitDef.GPIO_Mode = GPIO_Mode_AF;
-    GPIO_InitDef.GPIO_OType = GPIO_OType_OD;
-    GPIO_InitDef.GPIO_PuPd = GPIO_PuPd_NOPULL;
-    GPIO_InitDef.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_Init(GPIOA, &GPIO_InitDef);
-
-    // initialize A7/MOSI alternate function open-drain (50 MHz)
-    GPIO_InitDef.GPIO_Pin = GPIO_Pin_7;
-    GPIO_InitDef.GPIO_Mode = GPIO_Mode_AF;
-    GPIO_InitDef.GPIO_OType = GPIO_OType_PP;
-    GPIO_InitDef.GPIO_PuPd = GPIO_PuPd_NOPULL;
-    GPIO_InitDef.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_Init(GPIOA, &GPIO_InitDef);
-
-    //  initialize SPI slave
-    // for slave, no need to define SPI_BaudRatePrescaler
-    SPI_InitDef.SPI_Direction = SPI_Direction_2Lines_FullDuplex;
-    SPI_InitDef.SPI_Mode = SPI_Mode_Slave;
-    SPI_InitDef.SPI_DataSize = SPI_DataSize_8b; // 8-bit transactions
-    SPI_InitDef.SPI_FirstBit = SPI_FirstBit_MSB; // MSB first
-    SPI_InitDef.SPI_CPOL = SPI_CPOL_Low; // CPOL = 0, clock idle low
-    SPI_InitDef.SPI_CPHA = SPI_CPHA_1Edge; //  SPI_CPHA_2Edge; // CPHA = 1
-    SPI_InitDef.SPI_NSS = SPI_NSS_Hard; // use hardware SS
-    SPI_InitDef.SPI_BaudRatePrescaler = SPI_BaudRatePrescaler_64; // APB2 72/64 = 1.125 MHz
-    // SPI_InitDef.SPI_BaudRatePrescaler = SPI_BaudRatePrescaler_256; // APB2 72/256 = 0.28 MHz
-    // SPI_InitDef.SPI_BaudRatePrescaler = SPI_BaudRatePrescaler_16; // APB2 72/16 = 4.5 MHz
-    SPI_InitDef.SPI_CRCPolynomial = 7;
-
-//	SPI_I2S_DeInit(SPI1); // https://hackaday.io/project/28496-the-ultimate-vlogging-mic/log/71799-spi-between-the-raspberry-pi-stm32
-    SPI_Init(SPI1, &SPI_InitDef);
-
-    SPI_Cmd(SPI1, ENABLE);
-}
-
-// transfer a byte over SPI
-uint8_t transfer_8b_SPIx_Slave(uint8_t outByte) {
-
-    // Approach 1, from Brown's book
-    // SPI_I2S_SendData(SPI1, outByte); // send
-    // while(SPI_I2S_GetFlagStatus(SPI1, SPI_I2S_FLAG_RXNE) == RESET);
-    // return SPI_I2S_ReceiveData(SPI1); // read received
-
-    // Approach 2,
-    // from http://www.lxtronic.com/index.php/basic-spi-simple-read-write
-    while (!SPI_I2S_GetFlagStatus(SPI1, SPI_I2S_FLAG_TXE))
-        ;
-// SPI_I2S_SendData(SPI1, outByte);                                     // send
-    SPI_SendData8(SPI1, outByte);
-
-    while (!SPI_I2S_GetFlagStatus(SPI1, SPI_I2S_FLAG_RXNE))
-        ;
-// return SPI_I2S_ReceiveData(SPI2);                          // read recieived
-    return SPI_ReceiveData8(SPI1);
-}
-
-/*
- * https://community.st.com/s/question/0D50X00009XkiNwSAJ/stm32f3-discovery-recieve-char-or-word-from-rx
- */
-/**************************************************************************************/
-void RCC_Configuration(void) {
-
-#if 0 // UART1
-//    RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1 /* | RCC_APB2Periph_AFIO | RCC_APB2Periph_GPIOA */, ENABLE);
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);
-    /* GPIOA clock enable */
-    RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOA, ENABLE);
-
-#else
-
-    RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2 ,ENABLE); // RCC_AHBPeriph_GPIOA
-
-    RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOA,ENABLE); // enables clock to portA (https://www.mikrocontroller.net/attachment/183014/main.c)
-
-#endif
-}
-
-/**************************************************************************************/
-void GPIO_Configuration(void) {
-    GPIO_InitTypeDef GPIO_InitStructure;
-    /*-------------------------- GPIO Configuration ----------------------------*/
-//    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9 | GPIO_Pin_10; // USART1
-    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2 | GPIO_Pin_3; // USART2
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
-    GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-    GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
-    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_Init(GPIOA, &GPIO_InitStructure);
-    /* Connect USART pins to AF */
-//    GPIO_PinAFConfig(GPIOA, GPIO_PinSource9, GPIO_AF_7); // USART1_TX
-//    GPIO_PinAFConfig(GPIOA, GPIO_PinSource10, GPIO_AF_7); // USART1_RX
-    GPIO_PinAFConfig(GPIOA, GPIO_PinSource2, GPIO_AF_7); // USART2_TX
-    GPIO_PinAFConfig(GPIOA, GPIO_PinSource3, GPIO_AF_7); // USART2_RX
-}
-
-/**************************************************************************************/
-void USARTx_Configuration(void) {
-    USART_InitTypeDef USART_InitStructure;
-    /* USARTx configuration ------------------------------------------------------*/
-    /* USARTx configured as follow:
-     - BaudRate = 115200 baud
-     - Word Length = 8 Bits
-     - One Stop Bit
-     - No parity
-     - Hardware flow control disabled (RTS and CTS signals)
-     - Receive and transmit enabled
-     */
-    USART_InitStructure.USART_BaudRate = 115200;
-    USART_InitStructure.USART_WordLength = USART_WordLength_8b;
-    USART_InitStructure.USART_StopBits = USART_StopBits_1;
-    USART_InitStructure.USART_Parity = USART_Parity_No;
-    USART_InitStructure.USART_HardwareFlowControl =
-    USART_HardwareFlowControl_None;
-    USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
-// enable USART 1
-//    USART_Init(USART1, &USART_InitStructure);
-//    USART_Cmd(USART1, ENABLE);
-// enable USART 2
-    USART_Init(USART2, &USART_InitStructure);
-    USART_Cmd(USART2, ENABLE);
-}
-
-/**************************************************************************************/
-char USART_GetChar(void) {
-//    while (USART_GetFlagStatus(USART1, USART_FLAG_RXNE) == RESET)
-//        ; // Wait for Full
-//    return ((char) USART_ReceiveData(USART1));
-
-    while (USART_GetFlagStatus(USART2, USART_FLAG_RXNE) == RESET)
-        ; // Wait for Full
-    return ((char) USART_ReceiveData(USART2));
-}
-/**************************************************************************************/
-void USART_PutChar(char i) {
-//    while (USART_GetFlagStatus(USART1, USART_FLAG_TXE) == RESET)
-//        ; // Wait for Empty
-//    USART_SendData(USART1, i);
-    while (USART_GetFlagStatus(USART2, USART_FLAG_TXE) == RESET)
-        ; // Wait for Empty
-    USART_SendData(USART2, i);
-}
-/**************************************************************************************/
-void USART_PutString(char *s) {
-    while (*s)
-        USART_PutChar(*s++);
-}
-/**************************************************************************************/
-void USART_PutDecimal(int i) {
-    char str[16], *s;
-    int n;
-    s = str + sizeof(str); // Point to tail
-    *--s = 0; // NUL
-    if (i < 0) // Negative
-            {
-        n = 1;
-        i = -i; // Negate
-    } else
-        n = 0;
-    do {
-        *--s = '0' + (char) (i % 10);
-        i = i / 10;
-    } while (i);
-    if (n) // Add sign if negated
-        *--s = '-';
-    USART_PutString(s);
-}
-/**************************************************************************************/
 
 /*
  * https://olayiwolaayinde.medium.com/getting-started-with-stm32-23139d3401b8
@@ -283,10 +73,8 @@ void GPIO_Setup_LED(void) {
     RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOA, ENABLE);
 
 //configures the operating mode for the selected pins as Push-Pull Output
-    GPIOx.GPIO_Mode = GPIO_Mode_OUT; //  GPIO_Mode_Out_PP;
-
-// GPIOx.GPIO_OType = GPIO_OType_PP;
-
+    GPIOx.GPIO_Mode = GPIO_Mode_OUT;
+// GPIOx.GPIO_OType = GPIO_OType_PP; // default?
     GPIOx.GPIO_Speed = GPIO_Speed_2MHz;
     GPIOx.GPIO_Pin = GPIO_Pin_5;
 

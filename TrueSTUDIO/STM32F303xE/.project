@@ -239,6 +239,16 @@
 			<locationURI>PARENT-2-PROJECT_LOC/main.c</locationURI>
 		</link>
 		<link>
+			<name>User/spi.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/spi.c</locationURI>
+		</link>
+		<link>
+			<name>User/usart.c</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/usart.c</locationURI>
+		</link>		
+		<link>
 			<name>User/stm32303c_eval.c</name>
 			<type>1</type>
 			<locationURI>PARENT-4-PROJECT_LOC/Utilities/STM32_EVAL/STM32303C_EVAL/stm32303c_eval.c</locationURI>
