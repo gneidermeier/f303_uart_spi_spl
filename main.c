@@ -60,8 +60,11 @@ void _SysTick_Handler(void) {
     }
 }
 
+
 // setup SPI1 pins A4/SS, A5/SCK, A6/MISO, A7/MOSI on port A
-void PeripheralInit_SPI1_Slave() {
+// see also  https://hackaday.io/project/28496-the-ultimate-vlogging-mic/log/71799-spi-between-the-raspberry-pi-stm32
+//    https://community.st.com/s/question/0D50X00009Xkgnm/stm32f0-spi
+void PeripheralInit_SPIx_Slave() {
 
     GPIO_InitTypeDef GPIO_InitDef;
     SPI_InitTypeDef SPI_InitDef;
@@ -71,53 +74,49 @@ void PeripheralInit_SPI1_Slave() {
     SPI_StructInit(&SPI_InitDef);
 
     // initialize clocks
-    RCC_APB2PeriphClockCmd( RCC_APB2Periph_SPI1,
-//			 | RCC_APB2Periph_AFIO | RCC_APB2Periph_GPIOA,
-            ENABLE);
-
-    // Enables the peripheral clock
-    RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOA, ENABLE);
+    RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOB, ENABLE);
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_SPI2, ENABLE);
 
     // SS
-    GPIO_PinAFConfig(GPIOA, GPIO_PinSource4, GPIO_AF_5);
+    GPIO_PinAFConfig(GPIOB, GPIO_PinSource12, GPIO_AF_6);
     // SCK
-    GPIO_PinAFConfig(GPIOA, GPIO_PinSource5, GPIO_AF_5);
+    GPIO_PinAFConfig(GPIOB, GPIO_PinSource13, GPIO_AF_6);
     // MISO
-    GPIO_PinAFConfig(GPIOA, GPIO_PinSource6, GPIO_AF_5);
+    GPIO_PinAFConfig(GPIOB, GPIO_PinSource14, GPIO_AF_6);
     // MOSI
-    GPIO_PinAFConfig(GPIOA, GPIO_PinSource7, GPIO_AF_5);
+    GPIO_PinAFConfig(GPIOB, GPIO_PinSource15, GPIO_AF_6);
 
-    // initialize A4/SS alternate function open-drain (50 MHz)
-    GPIO_InitDef.GPIO_Pin = GPIO_Pin_4;
-    GPIO_InitDef.GPIO_Mode = GPIO_Mode_AF; //  GPIO_Mode_AF_OD;
+    // initialize PB12/SS alternate function open-drain (10 MHz)
+    GPIO_InitDef.GPIO_Pin = GPIO_Pin_12;
+    GPIO_InitDef.GPIO_Mode = GPIO_Mode_AF;
     GPIO_InitDef.GPIO_OType = GPIO_OType_PP;
     GPIO_InitDef.GPIO_PuPd = GPIO_PuPd_NOPULL;
-    GPIO_InitDef.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_Init(GPIOA, &GPIO_InitDef);
+    GPIO_InitDef.GPIO_Speed = GPIO_Speed_10MHz;
+    GPIO_Init(GPIOB, &GPIO_InitDef);
 
-    // initialize A5/SCK alternate function open-drain (50 MHz)
-    GPIO_InitDef.GPIO_Pin = GPIO_Pin_5;
-    GPIO_InitDef.GPIO_Mode = GPIO_Mode_AF; // GPIO_Mode_AF_OD;
+    // initialize PB13/SCK alternate function open-drain (10 MHz)
+    GPIO_InitDef.GPIO_Pin = GPIO_Pin_13;
+    GPIO_InitDef.GPIO_Mode = GPIO_Mode_AF;
     GPIO_InitDef.GPIO_OType = GPIO_OType_PP;
     GPIO_InitDef.GPIO_PuPd = GPIO_PuPd_NOPULL;
-    GPIO_InitDef.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_Init(GPIOA, &GPIO_InitDef);
+    GPIO_InitDef.GPIO_Speed = GPIO_Speed_10MHz;
+    GPIO_Init(GPIOB, &GPIO_InitDef);
 
-    // initialize A6/MISO alternate function push-pull (50 MHz)
-    GPIO_InitDef.GPIO_Pin = GPIO_Pin_6;
-    GPIO_InitDef.GPIO_Mode = GPIO_Mode_AF; //  GPIO_Mode_AF_PP;
-    GPIO_InitDef.GPIO_OType = GPIO_OType_OD; // GPIO_OType_PP;
+    // initialize PB14/MISO alternate function push-pull (10 MHz)
+    GPIO_InitDef.GPIO_Pin = GPIO_Pin_14;
+    GPIO_InitDef.GPIO_Mode = GPIO_Mode_AF;
+    GPIO_InitDef.GPIO_OType = GPIO_OType_OD;
     GPIO_InitDef.GPIO_PuPd = GPIO_PuPd_NOPULL;
-    GPIO_InitDef.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_Init(GPIOA, &GPIO_InitDef);
+    GPIO_InitDef.GPIO_Speed = GPIO_Speed_10MHz;
+    GPIO_Init(GPIOB, &GPIO_InitDef);
 
-    // initialize A7/MOSI alternate function open-drain (50 MHz)
-    GPIO_InitDef.GPIO_Pin = GPIO_Pin_7;
-    GPIO_InitDef.GPIO_Mode = GPIO_Mode_AF; // GPIO_Mode_AF_OD;
+    // initialize PB15/MOSI alternate function open-drain (10 MHz)
+    GPIO_InitDef.GPIO_Pin = GPIO_Pin_15;
+    GPIO_InitDef.GPIO_Mode = GPIO_Mode_AF;
     GPIO_InitDef.GPIO_OType = GPIO_OType_PP;
     GPIO_InitDef.GPIO_PuPd = GPIO_PuPd_NOPULL;
-    GPIO_InitDef.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_Init(GPIOA, &GPIO_InitDef);
+    GPIO_InitDef.GPIO_Speed = GPIO_Speed_10MHz;
+    GPIO_Init(GPIOB, &GPIO_InitDef);
 
     //  initialize SPI slave
     // for slave, no need to define SPI_BaudRatePrescaler
@@ -134,13 +133,13 @@ void PeripheralInit_SPI1_Slave() {
     SPI_InitDef.SPI_CRCPolynomial = 7;
 
 //	SPI_I2S_DeInit(SPI1); // https://hackaday.io/project/28496-the-ultimate-vlogging-mic/log/71799-spi-between-the-raspberry-pi-stm32
-    SPI_Init(SPI1, &SPI_InitDef);
+    SPI_Init(SPI2, &SPI_InitDef);
 
-    SPI_Cmd(SPI1, ENABLE);
+    SPI_Cmd(SPI2, ENABLE);
 }
 
-// transfer a byte over SPI1  A4/SS, A5/SCK, A6/MISO, A7/MOSI
-uint8_t transfer_8b_SPI1_Slave(uint8_t outByte) {
+// transfer a byte over SPI
+uint8_t transfer_8b_SPIx_Slave(uint8_t outByte) {
 
     // Approach 1, from Brown's book
     // SPI_I2S_SendData(SPI1, outByte); // send
@@ -149,15 +148,15 @@ uint8_t transfer_8b_SPI1_Slave(uint8_t outByte) {
 
     // Approach 2,
     // from http://www.lxtronic.com/index.php/basic-spi-simple-read-write
-    while (!SPI_I2S_GetFlagStatus(SPI1, SPI_I2S_FLAG_TXE))
+    while (!SPI_I2S_GetFlagStatus(SPI2, SPI_I2S_FLAG_TXE))
         ;
-//	SPI_I2S_SendData(SPI1, outByte);                                     // send
-    SPI_SendData8(SPI1, outByte);
+// SPI_I2S_SendData(SPI1, outByte);                                     // send
+    SPI_SendData8(SPI2, outByte);
 
-    while (!SPI_I2S_GetFlagStatus(SPI1, SPI_I2S_FLAG_RXNE))
+    while (!SPI_I2S_GetFlagStatus(SPI2, SPI_I2S_FLAG_RXNE))
         ;
-//	return SPI_I2S_ReceiveData(SPI1);                          // read recieived
-    return SPI_ReceiveData8(SPI1);
+// return SPI_I2S_ReceiveData(SPI2);                          // read recieived
+    return SPI_ReceiveData8(SPI2);
 }
 
 /*
@@ -292,7 +291,7 @@ void GPIO_Setup_LED(void) {
     GPIO_Init(GPIOA, &GPIOx);
 }
 
-//#define LEDTEST
+#define LEDTEST
 
 /**
  * @brief  Main program.
@@ -317,8 +316,9 @@ int main(void) {
 #ifdef LEDTEST
 	int flag = 0;
 	GPIO_Setup_LED();
-#else
-    PeripheralInit_SPI1_Slave();
+#endif
+#if 1 // SPI
+    PeripheralInit_SPIx_Slave();
 #endif
 
     RCC_Configuration();
@@ -339,18 +339,18 @@ int main(void) {
 			GPIO_ResetBits(GPIOA, GPIO_Pin_5); //On the LED since the negative pin is connected to PB12
 			// You can also use GPIO_WriteBit(GPIOB, GPIO_Pin_12, RESET);
 		}
-#else
+#endif
         sprintf((char*) spi_out, "ABCDE"); // junk data
         sprintf((char*) spi_buf, "....."); // junk data
-        spi_buf[0] = transfer_8b_SPI1_Slave(spi_out[0]);
-        spi_buf[1] = transfer_8b_SPI1_Slave(spi_out[1]);
-        spi_buf[2] = transfer_8b_SPI1_Slave(spi_out[2]);
-        spi_buf[3] = transfer_8b_SPI1_Slave(n);
-
+#if 0 // SPI
+        spi_buf[0] = transfer_8b_SPIx_Slave(spi_out[0]);
+        spi_buf[1] = transfer_8b_SPIx_Slave(spi_out[1]);
+        spi_buf[2] = transfer_8b_SPIx_Slave(spi_out[2]);
+        spi_buf[3] = transfer_8b_SPIx_Slave(n);
+#endif
         sprintf(uart_out, ">%d: %02X %02X %02X %02X.\r\n", n, spi_buf[0],
                 spi_buf[1], spi_buf[2], spi_buf[3]);
         //      uart_out[0] = n;
-#endif
 
 //  USART1->TDR = 0x30;
         USART_PutString(uart_out);
